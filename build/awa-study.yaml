@@ -1,0 +1,24 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: EC2 instance with SSH access
+
+Resources:
+  MyEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: ami-0cc9838aa7ab1dce7 
+      InstanceType: t2.micro
+      KeyName: takatoseki
+      SecurityGroupIds:
+        - !Ref MySecurityGroup
+      SubnetId: subnet-02037ca8d93fda88f
+
+  MySecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow SSH from anywhere
+      VpcId: vpc-0691ddb9fb50ddff5 
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0 
