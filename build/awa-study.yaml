@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 最小構成のEC2環境（VPC, Subnet, IGW, EC2）
+Description: VPC + EC2 + ALB + RDS 構成テンプレート（第25回＋ALB＋RDS）
 
 Resources:
   MyVPC:
@@ -12,7 +12,7 @@ Resources:
         - Key: Name
           Value: MyVPC
 
-  MySubnet:
+  MyPublicSubnet:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref MyVPC
@@ -22,6 +22,28 @@ Resources:
       Tags:
         - Key: Name
           Value: MyPublicSubnet
+
+  MyPublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MyVPC
+      CidrBlock: 10.0.2.0/24
+      AvailabilityZone: ap-northeast-1c
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: MyPublicSubnet2
+
+  MyPrivateSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MyVPC
+      CidrBlock: 10.0.3.0/24
+      AvailabilityZone: ap-northeast-1a
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: MyPrivateSubnet
 
   MyInternetGateway:
     Type: AWS::EC2::InternetGateway
@@ -44,32 +66,125 @@ Resources:
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId: !Ref MyInternetGateway
 
-  SubnetRouteTableAssociation:
+  PublicRouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
-      SubnetId: !Ref MySubnet
+      SubnetId: !Ref MyPublicSubnet
       RouteTableId: !Ref MyRouteTable
 
-  MySecurityGroup:
+  PublicRouteTableAssociation2:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref MyPublicSubnet2
+      RouteTableId: !Ref MyRouteTable
+
+  EC2SecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Allow SSH
+      GroupDescription: Allow SSH/HTTP
       VpcId: !Ref MyVPC
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 22
           ToPort: 22
           CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
 
-  MyEC2Instance:
-    Type: AWS::EC2::Instance
+  ALBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
     Properties:
-      InstanceType: t2.micro
-      KeyName: takatoseki   
-      ImageId: ami-095af7cb7ddb447ef
-      NetworkInterfaces:
-        - AssociatePublicIpAddress: true
-          DeviceIndex: 0
-          SubnetId: !Ref MySubnet
-          GroupSet:
-            - !Ref MySecurityGroup
+      GroupDescription: Allow HTTP
+      VpcId: !Ref MyVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+
+  MyTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Port: 80
+      Protocol: HTTP
+      VpcId: !Ref MyVPC
+      TargetType: instance
+      HealthCheckProtocol: HTTP
+      HealthCheckPath: /
+
+  MyLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Scheme: internet-facing
+      Subnets:
+        - !Ref MyPublicSubnet
+        - !Ref MyPublicSubnet2
+      SecurityGroups:
+        - !Ref ALBSecurityGroup
+
+  MyListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref MyTargetGroup
+      LoadBalancerArn: !Ref MyLoadBalancer
+      Port: 80
+      Protocol: HTTP
+
+  MyLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateData:
+        InstanceType: t2.micro
+        ImageId: ami-095af7cb7ddb447ef
+        KeyName: takatoseki
+        SecurityGroupIds:
+          - !Ref EC2SecurityGroup
+        UserData:
+          Fn::Base64: |
+            #!/bin/bash
+            yum install -y httpd
+            systemctl start httpd
+            systemctl enable httpd
+            echo "<h1>Hello from ASG EC2</h1>" > /var/www/html/index.html
+
+  MyAutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      VPCZoneIdentifier:
+        - !Ref MyPublicSubnet
+        - !Ref MyPublicSubnet2
+      LaunchTemplate:
+        LaunchTemplateId: !Ref MyLaunchTemplate
+        Version: !GetAtt MyLaunchTemplate.LatestVersionNumber
+      MinSize: '1'
+      MaxSize: '2'
+      DesiredCapacity: '1'
+      TargetGroupARNs:
+        - !Ref MyTargetGroup
+
+  MyDBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Subnet group for RDS
+      SubnetIds:
+        - !Ref MyPublicSubnet
+        - !Ref MyPublicSubnet2
+
+  MyRDSInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      AllocatedStorage: 20
+      DBInstanceClass: db.t3.micro
+      Engine: mysql
+      EngineVersion: "8.0"
+      MasterUsername: admin
+      MasterUserPassword: password1234
+      VPCSecurityGroups:
+        - !Ref EC2SecurityGroup
+      DBSubnetGroupName: !Ref MyDBSubnetGroup
+      MultiAZ: false
+      PubliclyAccessible: false
