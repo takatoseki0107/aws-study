@@ -1,5 +1,17 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: VPC + EC2 + ALB + RDS 構成テンプレート（第25回＋ALB＋RDS）
+Description: EC2 + ALB + RDS in 2 AZs
+
+Parameters:
+  KeyName:
+    Type: String
+    Description: EC2 Key Pair
+    Default: takatoseki
+
+  DBPassword:
+    NoEcho: true
+    Type: String
+    MinLength: 8
+    Description: "The database admin password"
 
 Resources:
   MyVPC:
@@ -12,7 +24,16 @@ Resources:
         - Key: Name
           Value: MyVPC
 
-  MyPublicSubnet:
+  MyInternetGateway:
+    Type: AWS::EC2::InternetGateway
+
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref MyInternetGateway
+      VpcId: !Ref MyVPC
+
+  MyPublicSubnet1:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref MyVPC
@@ -21,7 +42,7 @@ Resources:
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
-          Value: MyPublicSubnet
+          Value: PublicSubnet1
 
   MyPublicSubnet2:
     Type: AWS::EC2::Subnet
@@ -32,27 +53,27 @@ Resources:
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
-          Value: MyPublicSubnet2
+          Value: PublicSubnet2
 
-  MyPrivateSubnet:
+  MyPrivateSubnet1:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref MyVPC
-      CidrBlock: 10.0.3.0/24
+      CidrBlock: 10.0.10.0/24
       AvailabilityZone: ap-northeast-1a
-      MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
-          Value: MyPrivateSubnet
+          Value: PrivateSubnet1
 
-  MyInternetGateway:
-    Type: AWS::EC2::InternetGateway
-
-  AttachGateway:
-    Type: AWS::EC2::VPCGatewayAttachment
+  MyPrivateSubnet2:
+    Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref MyVPC
-      InternetGatewayId: !Ref MyInternetGateway
+      CidrBlock: 10.0.11.0/24
+      AvailabilityZone: ap-northeast-1c
+      Tags:
+        - Key: Name
+          Value: PrivateSubnet2
 
   MyRouteTable:
     Type: AWS::EC2::RouteTable
@@ -66,60 +87,73 @@ Resources:
       DestinationCidrBlock: 0.0.0.0/0
       GatewayId: !Ref MyInternetGateway
 
-  PublicRouteTableAssociation:
+  PublicSubnet1RouteAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
-      SubnetId: !Ref MyPublicSubnet
+      SubnetId: !Ref MyPublicSubnet1
       RouteTableId: !Ref MyRouteTable
 
-  PublicRouteTableAssociation2:
+  PublicSubnet2RouteAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       SubnetId: !Ref MyPublicSubnet2
       RouteTableId: !Ref MyRouteTable
 
+  ALBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: ALB Security Group
+      VpcId: !Ref MyVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+
   EC2SecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Allow SSH/HTTP
+      GroupDescription: EC2 Security Group
       VpcId: !Ref MyVPC
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 22
           ToPort: 22
-          CidrIp: 0.0.0.0/0
+          CidrIp: xx.xx.xx.xx/32   # ← 自分のIPに修正してね
         - IpProtocol: tcp
           FromPort: 80
           ToPort: 80
-          CidrIp: 0.0.0.0/0
+          SourceSecurityGroupId: !Ref ALBSecurityGroup
 
-  ALBSecurityGroup:
+  RDSSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Allow HTTP
+      GroupDescription: RDS Security Group
       VpcId: !Ref MyVPC
       SecurityGroupIngress:
         - IpProtocol: tcp
-          FromPort: 80
-          ToPort: 80
-          CidrIp: 0.0.0.0/0
+          FromPort: 3306
+          ToPort: 3306
+          SourceSecurityGroupId: !Ref EC2SecurityGroup
 
   MyTargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
-      Port: 80
-      Protocol: HTTP
       VpcId: !Ref MyVPC
+      Protocol: HTTP
+      Port: 80
       TargetType: instance
-      HealthCheckProtocol: HTTP
       HealthCheckPath: /
+      Matcher:
+        HttpCode: 200
 
   MyLoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
+      Name: MyALB
       Scheme: internet-facing
       Subnets:
-        - !Ref MyPublicSubnet
+        - !Ref MyPublicSubnet1
         - !Ref MyPublicSubnet2
       SecurityGroups:
         - !Ref ALBSecurityGroup
@@ -127,64 +161,65 @@ Resources:
   MyListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:
-      DefaultActions:
-        - Type: forward
-          TargetGroupArn: !Ref MyTargetGroup
       LoadBalancerArn: !Ref MyLoadBalancer
       Port: 80
       Protocol: HTTP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref MyTargetGroup
 
   MyLaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
     Properties:
       LaunchTemplateData:
         InstanceType: t2.micro
+        KeyName: !Ref KeyName
         ImageId: ami-095af7cb7ddb447ef
-        KeyName: takatoseki
         SecurityGroupIds:
           - !Ref EC2SecurityGroup
         UserData:
           Fn::Base64: |
             #!/bin/bash
+            yum update -y
             yum install -y httpd
             systemctl start httpd
             systemctl enable httpd
             echo "<h1>Hello from ASG EC2</h1>" > /var/www/html/index.html
+      LaunchTemplateName: my-template
 
   MyAutoScalingGroup:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
       VPCZoneIdentifier:
-        - !Ref MyPublicSubnet
+        - !Ref MyPublicSubnet1
         - !Ref MyPublicSubnet2
       LaunchTemplate:
         LaunchTemplateId: !Ref MyLaunchTemplate
         Version: !GetAtt MyLaunchTemplate.LatestVersionNumber
       MinSize: '1'
       MaxSize: '2'
-      DesiredCapacity: '1'
       TargetGroupARNs:
         - !Ref MyTargetGroup
 
   MyDBSubnetGroup:
     Type: AWS::RDS::DBSubnetGroup
     Properties:
-      DBSubnetGroupDescription: Subnet group for RDS
+      DBSubnetGroupDescription: My DB subnet group
       SubnetIds:
-        - !Ref MyPublicSubnet
-        - !Ref MyPublicSubnet2
+        - !Ref MyPrivateSubnet1
+        - !Ref MyPrivateSubnet2
 
   MyRDSInstance:
     Type: AWS::RDS::DBInstance
     Properties:
-      AllocatedStorage: 20
-      DBInstanceClass: db.t3.micro
       Engine: mysql
       EngineVersion: "8.0"
+      DBInstanceClass: db.t3.micro
+      AllocatedStorage: 20
       MasterUsername: admin
-      MasterUserPassword: password1234
-      VPCSecurityGroups:
-        - !Ref EC2SecurityGroup
+      MasterUserPassword: !Ref DBPassword
       DBSubnetGroupName: !Ref MyDBSubnetGroup
-      MultiAZ: false
+      VPCSecurityGroups:
+        - !Ref RDSSecurityGroup
       PubliclyAccessible: false
+    DeletionPolicy: Snapshot
