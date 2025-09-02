@@ -119,7 +119,7 @@ Resources:
         - IpProtocol: tcp
           FromPort: 22
           ToPort: 22
-          CidrIp: xx.xx.xx.xx/32   # ← 自分のIPに修正してね
+          CidrIp: 221.49.49.27/32
         - IpProtocol: tcp
           FromPort: 80
           ToPort: 80
