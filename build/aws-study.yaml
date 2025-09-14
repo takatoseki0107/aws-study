@@ -12,7 +12,7 @@ Parameters:
     Type: String
     MinLength: 8
     Description: "The database admin password"
-
+#resourse
 Resources:
   MyVPC:
     Type: AWS::EC2::VPC
