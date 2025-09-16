@@ -208,6 +208,12 @@ Resources:
         - !Ref RDSSecurityGroup
       PubliclyAccessible: false
 
+  MySNSTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: "Alarm Notification"
+      TopicName: !Sub "${NamePrefix}-alarm-topic"
+
   EC2CPUUtilizationAlarm:
     Type: AWS::CloudWatch::Alarm
     Properties:
@@ -262,7 +268,7 @@ Resources:
     Type: AWS::WAFv2::WebACLAssociation
     DependsOn: MyLoadBalancer # ← 追加（安定化）
     Properties:
-      ResourceArn: !Ref MyLoadBalancer
+      ResourceArn: !GetAtt MyLoadBalancer.LoadBalancerArn
       WebACLArn: !GetAtt MyWebACL.Arn
 
   #ロググループ
@@ -275,6 +281,9 @@ Resources:
   # ログ設定
   MyWebACLLoggingConfiguration:
     Type: AWS::WAFv2::LoggingConfiguration
+    DependsOn:
+      - MyWebACL
+      - WAFLogGroup
     Properties:
       ResourceArn: !GetAtt MyWebACL.Arn
       LogDestinationConfigs:
