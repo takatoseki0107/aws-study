@@ -4,14 +4,14 @@ on:
   pull_request:
     paths:
       -  'terraform/**/*.tf'
-      -  'terraform/tests/**.tftest.hcl'
+      -  'terraform/tests/test.tftest.hcl'
       -  '.github/workflows/*.yaml'
       -  '.github/workflows/*.yml'
   push:
     branches:  [  main  ]
     paths:
       -  'terraform/**/*.tf'
-      -  'terraform/tests/**.tftest.hcl'
+      -  'terraform/tests/test.tftest.hcl'
       -  '.github/workflows/*.yaml'
       -  '.github/workflows/*.yml'
 
