@@ -23,6 +23,7 @@ jobs:
       AWS_ACCESS_KEY_ID:  ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY:  ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_DEFAULT_REGION:  ap-northeast-1
+      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
     
     defaults:
       run:
@@ -45,8 +46,8 @@ jobs:
         run: terraform test
 
       - name: Terraform Plan
-        run: terraform plan -input=false
+        run:  terraform plan -input=false -var="db_password=${DB_PASSWORD}"
 
       - name: Terraform Apply
         if: github.ref == 'refs/heads/main'
-        run: terraform apply -auto-approve -input=false
+        run:  terraform apply -auto-approve -input=false -var="db_password=${DB_PASSWORD}"
