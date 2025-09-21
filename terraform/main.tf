@@ -24,12 +24,6 @@ variable "key_name" {
   default     = "takatoseki"
 }
 
-variable "db_password" {
-  description = "The database admin password"
-  type        = string
-  sensitive   = true
-}
-
 variable "name_prefix" {
   default = "aws-study"
 }
@@ -189,6 +183,7 @@ data "aws_ami" "al2" {
 }
 
 resource "aws_instance" "web" {
+  count                       = 1
   ami                         = data.aws_ami.al2.id
   instance_type               = "t2.micro"
   key_name                    = var.key_name
