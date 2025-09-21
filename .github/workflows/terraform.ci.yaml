@@ -20,11 +20,6 @@ jobs:
   terraform:
     runs-on: ubuntu-latest
 
-    env:
-      AWS_ACCESS_KEY_ID:  ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY:  ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      AWS_DEFAULT_REGION:  ap-northeast-1
-    
     defaults:
       run:
         working-directory: terraform
@@ -32,6 +27,14 @@ jobs:
     steps:
       - name: コードをチェックアウト
         uses: actions/checkout@v3
+        
+      # AWS認証情報の受け渡し
+      - name: configure AWS Credentials
+        uses: aws-actions/configre-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-northeast-1
 
       - name: Terraform セットアップ
         uses: hashicorp/setup-terraform@v2
@@ -45,8 +48,11 @@ jobs:
       - name: Terraform テスト実行
         run: terraform test
 
+     # Terraformの実行計画作成
       - name: Terraform Plan
-        run:  terraform plan -input=false
-      - name: Terraform Apply
-        if: github.ref == 'refs/heads/main'
-        run:  terraform apply -auto-approve -input=false
+        run:  terraform plan -no-color -var="allowed_ssh_cidr=221.49.49.27/32"
+
+      - name: Debug AWS Caller
+        run: |
+          aws sts get-caller-identity
+          aws ec2 describe-key-pairs --region ap-northeast-1 
