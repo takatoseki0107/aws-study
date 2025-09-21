@@ -6,14 +6,13 @@ on:
       -  'terraform/**/*.tf'
       -  'terraform/tests/**/*.tftest.hcl'
       -  '.github/workflows/*.yaml'
-      -  '.github/workflows/*.yml'
+
   push:
     branches:  [  main  ]
     paths:
       -  'terraform/**/*.tf'
       -  'terraform/tests/**/*.tftest.hcl'
       -  '.github/workflows/*.yaml'
-      -  '.github/workflows/*.yml'
 
 jobs:
   terraform:
@@ -50,4 +49,3 @@ jobs:
       - name: Terraform Apply
         if: github.ref == 'refs/heads/main'
         run: terraform apply -auto-approve -input=false
-
