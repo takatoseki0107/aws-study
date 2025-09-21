@@ -16,7 +16,7 @@ output "alb_type" {
 }
 
 output "ec2_instance_type" {
-  value = aws_instance.web.instance_type
+  value = aws_instance.web[0].instance_type
 }
 
 output "rds_publicly_accessible" {
