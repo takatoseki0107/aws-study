@@ -50,9 +50,12 @@ jobs:
 
      # Terraformの実行計画作成
       - name: Terraform Plan
-        run:  terraform plan -no-color -var="allowed_ssh_cidr=221.49.49.27/32"
+        run:  terraform plan -no-color \
+          -var="allowed_ssh_cidr=221.49.49.27/32" \
+          -var="db_password=${{ secrets.DB_PASSWORD }}"
 
-      - name: Debug AWS Caller
-        run: |
-          aws sts get-caller-identity
-          aws ec2 describe-key-pairs --region ap-northeast-1 
+      - name: Terraform Apply
+        if: github.ref == 'refs/heads/main'
+        run: terraform apply -auto-approve -input=false \
+          -var="allowed_ssh_cidr=221.49.49.27/32" \
+          -var="db_password=${{ secrets.DB_PASSWORD }}"

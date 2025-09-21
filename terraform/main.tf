@@ -24,6 +24,11 @@ variable "key_name" {
   default     = "takatoseki"
 }
 
+variable "db_password" {
+  description = "The database admin password"
+  type        = string
+}
+
 variable "name_prefix" {
   default = "aws-study"
 }
