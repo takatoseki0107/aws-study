@@ -29,8 +29,8 @@ jobs:
         uses: actions/checkout@v3
         
       # AWS認証情報の受け渡し
-      - name: configure AWS Credentials
-        uses: aws-actions/configre-aws-credentials@v4
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
