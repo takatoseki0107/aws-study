@@ -223,7 +223,7 @@ resource "aws_lb_target_group" "tg" {
 
 resource "aws_lb_target_group_attachment" "attach" {
   target_group_arn = aws_lb_target_group.tg.arn
-  target_id        = aws_instance.web.id
+  target_id        = aws_instance.web[0].id
   port             = 8080
 }
 
@@ -275,7 +275,7 @@ resource "aws_cloudwatch_metric_alarm" "cpu_util" {
   namespace         = "AWS/EC2"
   metric_name       = "CPUUtilization"
   dimensions = {
-    InstanceId = aws_instance.web.id
+    InstanceId = aws_instance.web[0].id
   }
   statistic           = "Average"
   period              = 300
@@ -351,7 +351,7 @@ output "alb_dns_name" {
 
 output "ec2_public_ip" {
   description = "Public IP of the EC2 instance"
-  value       = aws_instance.web.public_ip
+  value       = aws_instance.web[0].public_ip
 }
 
 output "rds_endpoint" {
