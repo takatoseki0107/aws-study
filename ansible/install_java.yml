@@ -1,0 +1,15 @@
+---
+- name: Install Java on EC2
+  hosts: all
+  become: true
+  tasks:
+    - name: Update yum packages
+      yum:
+        name: "*"
+        state: latest
+
+    - name: Install Java 11
+      yum:
+        name: java-11-amazon-corretto
+        state: present
+
