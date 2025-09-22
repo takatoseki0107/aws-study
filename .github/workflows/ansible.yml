@@ -1,7 +1,7 @@
 name: Ansible CI
 
 on:
-  workflow_dispatch:   # 手動実行できるようにする（最初はこれが安全）
+  workflow_dispatch:  # 手動実行できるようにする
   pull_request:
     paths:
       - "ansible/**"
@@ -15,20 +15,20 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.x"
-
       - name: Install Ansible
-        run: pip install ansible boto3 botocore
+        run: sudo apt-get update && sudo apt-get install -y ansible
+
+      - name: Set up SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
       - name: Run Ansible Playbook
-        env:
-          ANSIBLE_HOST_KEY_CHECKING: "False"
         run: |
-          ansible-playbook -i "${{ secrets.EC2_PUBLIC_IP }}," \
-            -u ec2-user \
-            --private-key <(echo "${{ secrets.SSH_PRIVATE_KEY }}") \
-            ansible/install_java.yml
-
+          ansible-playbook \
+          -i "${{ secrets.EC2_HOST }}," \
+          -u ec2-user \
+          --private-key ~/.ssh/id_rsa \
+          ansible/install_java.yml
