@@ -18,18 +18,13 @@ jobs:
       - name: Install Ansible
         run: sudo apt-get update && sudo apt-get install -y ansible
       #
-      - name: Set up SSH key
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.EC2_SSH_KEY }}" | tr -d '\r' > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+      - name: Set up SSH key 
+        run: | 
+          mkdir -p ~/.ssh 
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa 
+          chmod 600 ~/.ssh/id_rsa ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
 
       - name: Run Ansible Playbook
-        run: |
-          ansible-playbook \
-          -i "${{ secrets.EC2_HOST }}," \
-          -u ec2-user \
-          --private-key ~/.ssh/id_rsa \
-          ansible/install_java.yml
+        run: ansible-playbook -i "${{ secrets.EC2_HOST }}," -u ec2-user --private-key ~/.ssh/id_rsa ansible/install_java.yml
+
