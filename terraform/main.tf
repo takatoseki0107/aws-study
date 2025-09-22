@@ -188,7 +188,7 @@ data "aws_ami" "al2" {
 }
 
 resource "aws_instance" "web" {
-  count                       = 1
+  count                       = 2
   ami                         = data.aws_ami.al2.id
   instance_type               = "t2.micro"
   key_name                    = var.key_name
@@ -196,7 +196,9 @@ resource "aws_instance" "web" {
   vpc_security_group_ids      = [aws_security_group.ec2.id]
   associate_public_ip_address = true
 
-  tags = { Name = "${var.name_prefix}-ec2" }
+  tags = {
+    Name = "${var.name_prefix}-ec2-${count.index}"
+  }
 }
 
 # ====================================
@@ -222,8 +224,9 @@ resource "aws_lb_target_group" "tg" {
 }
 
 resource "aws_lb_target_group_attachment" "attach" {
+  for_each         = { for idx, inst in aws_instance.web : idx => inst }
   target_group_arn = aws_lb_target_group.tg.arn
-  target_id        = aws_instance.web[0].id
+  target_id        = each.value.id
   port             = 8080
 }
 
@@ -351,8 +354,9 @@ output "alb_dns_name" {
 
 output "ec2_public_ip" {
   description = "Public IP of the EC2 instance"
-  value       = aws_instance.web[0].public_ip
+  value       = [for inst in aws_instance.web : inst.public_ip]
 }
+
 
 output "rds_endpoint" {
   description = "RDS endpoint to connect to the database"
