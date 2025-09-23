@@ -14,24 +14,21 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+        
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.x"
 
       - name: Install Ansible
         run: sudo apt-get update && sudo apt-get install -y ansible
       #キー
-      - name: Set up SSH key
-        run: |
-          mkdir -p ~/.ssh
-          cat <<'EOF' > ~/.ssh/id_rsa
-          ${{ secrets.EC2_SSH_KEY }}
-          EOF
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
-
       - name: Run Ansible Playbook
+        env:
+          ANSIBLE_HOST_KEY_CHECKING: "False"
         run: |
-          ansible all -i '${{ secrets.EC2_HOST }},' -m ping \
-            -u ec2-user --private-key ~/.ssh/id_rsa
-          ansible-playbook -i '${{ secrets.EC2_HOST }},' \
-            -u ec2-user --private-key ~/.ssh/id_rsa \
+          ansible-playbook -i "${{ secrets.EC2_PUBLIC_IP }}," \
+            -u ec2-user \
+            --private-key <(echo "${{ secrets.SSH_PRIVATE_KEY }}") \
             ansible/install_java.yml
 
