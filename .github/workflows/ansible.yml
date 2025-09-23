@@ -18,10 +18,14 @@ jobs:
       - name: Install Ansible
         run: sudo apt-get update && sudo apt-get install -y ansible
       #キー
-      - name: Quick SSH check (optional but helpful)
+      - name: Set up SSH key
         run: |
-          ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 \
-              -i ~/.ssh/id_rsa ec2-user@${{ secrets.EC2_HOST }} 'echo OK'
+          mkdir -p ~/.ssh
+          cat <<'EOF' > ~/.ssh/id_rsa
+          ${{ secrets.EC2_SSH_KEY }}
+          EOF
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
       - name: Run Ansible Playbook
         run: |
