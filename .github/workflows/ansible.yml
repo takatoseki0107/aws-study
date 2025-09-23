@@ -1,9 +1,8 @@
 name: Deploy Java to EC2
 
 on:
-  push:
-    branches:
-      - main
+  pull_request:
+  workflow_dispatch:
 
 jobs:
   ansible-deploy:
@@ -12,13 +11,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup SSH key
+      - name: Create SSH key file
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
 
       - name: Install Ansible Galaxy collections
         run: ansible-galaxy collection install amazon.aws
@@ -30,4 +27,3 @@ jobs:
           directory: ./ansible
           inventory: './ansible/inventory.ini'
           key_file: ~/.ssh/id_rsa
-          
