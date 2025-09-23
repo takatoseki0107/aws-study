@@ -22,7 +22,7 @@ jobs:
 
       - name: Install Ansible
         run: sudo apt-get update && sudo apt-get install -y ansible
-      #キー
+      #キ
       - name: Run Ansible Playbook
         env:
           ANSIBLE_HOST_KEY_CHECKING: "False"
