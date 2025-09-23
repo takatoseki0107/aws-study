@@ -27,6 +27,5 @@ jobs:
         with:
           playbook: install_java.yml
           directory: ./ansible
-          inventory: "${{ secrets.EC2_HOST }},"
-          options: '--extra-vars "ansible_user=ec2-user"'
+          inventory: ./ansible/inventory.ini
           key: ${{ secrets.SSH_PRIVATE_KEY }}
