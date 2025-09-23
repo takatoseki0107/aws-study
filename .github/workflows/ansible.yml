@@ -37,5 +37,5 @@ jobs:
           ansible-playbook -i "${{ secrets.EC2_HOST }}," \
             -u ec2-user \
             --private-key ~/.ssh/id_rsa \
-            -e 'ansible_python_interpreter=/usr/bin/python3.7' \
+            -e 'ansible_python_interpreter=/usr/bin/python3.9' \
             ansible/install_java.yml
