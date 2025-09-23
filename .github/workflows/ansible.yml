@@ -27,5 +27,9 @@ jobs:
         with:
           playbook: install_java.yml
           directory: ./ansible
-          inventory: ${{ secrets.EC2_HOST }},
+          inventory: inventory.ini 
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          options: |      
+            -u ec2-user      
+            -e ansible_python_interpreter=/usr/bin/python3.9
+        
