@@ -3,6 +3,6 @@
   become: yes
   tasks:
     - name: Install Java 11
-      amazon.aws.amazon_linux_extras:
-        name: corretto11
-        state: enabled
+      ansible.builtin.yum:
+        name: java-11-amazon-corretto-headless
+        state: present
