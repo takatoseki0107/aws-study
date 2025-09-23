@@ -118,13 +118,17 @@ resource "aws_security_group" "alb" {
     to_port     = 80
     cidr_blocks = ["0.0.0.0/0"]
   }
-
-  egress {
-    protocol    = "tcp"
-    from_port   = 0
-    to_port     = 0
-    cidr_blocks = [aws_security_group.ec2.id]
-  }
+}
+# 循環参照を解消するため、ALBのegressルールを別のリソースとして定義
+resource "aws_security_group_rule" "alb_egress_to_ec2" {
+  type      = "egress"
+  from_port = 8080
+  to_port   = 8080
+  protocol  = "tcp"
+  # ここでec2セキュリティグループを参照
+  source_security_group_id = aws_security_group.ec2.id
+  # 適用先のセキュリティグループとしてalbを指定
+  security_group_id = aws_security_group.alb.id
 }
 
 resource "aws_security_group" "ec2" {
