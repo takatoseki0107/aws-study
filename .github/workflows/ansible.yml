@@ -26,4 +26,4 @@ jobs:
           playbook: ansible/install_java.yml
           directory: ./ansible
           inventory: './ansible/inventory.ini'
-          key_file: ~/.ssh/id_rsa
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
