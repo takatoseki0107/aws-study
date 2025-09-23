@@ -23,7 +23,7 @@ jobs:
       - name: Run Ansible Playbook
         uses: dawidd6/action-ansible-playbook@v2
         with:
-          playbook: ansible/install_java.yml
+          playbook: install_java.yml
           directory: ./ansible
           inventory: ./ansible/inventory.ini
           key: ${{ secrets.SSH_PRIVATE_KEY }}
