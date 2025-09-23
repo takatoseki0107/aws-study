@@ -120,10 +120,10 @@ resource "aws_security_group" "alb" {
   }
 
   egress {
-    protocol    = "-1"
+    protocol    = "tcp"
     from_port   = 0
     to_port     = 0
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = [aws_security_group.ec2.id]
   }
 }
 
@@ -136,7 +136,7 @@ resource "aws_security_group" "ec2" {
     protocol    = "tcp"
     from_port   = 22
     to_port     = 22
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = [var.allowed_ssh_cidr]
   }
 
   ingress {
@@ -166,12 +166,6 @@ resource "aws_security_group" "rds" {
     security_groups = [aws_security_group.ec2.id]
   }
 
-  egress {
-    protocol    = "-1"
-    from_port   = 0
-    to_port     = 0
-    cidr_blocks = ["0.0.0.0/0"]
-  }
 }
 
 # ====================================
