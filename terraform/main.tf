@@ -140,7 +140,7 @@ resource "aws_security_group" "ec2" {
     protocol    = "tcp"
     from_port   = 22
     to_port     = 22
-    cidr_blocks = [var.allowed_ssh_cidr]
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   ingress {
@@ -175,19 +175,19 @@ resource "aws_security_group" "rds" {
 # ====================================
 # EC2 Instance
 # ====================================
-data "aws_ami" "al2" {
+data "aws_ami" "al2023" {
   most_recent = true
   owners      = ["amazon"]
 
   filter {
     name   = "name"
-    values = ["amzn2-ami-hvm-*-x86_64-gp2"]
+    values = ["al2023-ami-*-x86_64"]
   }
 }
 
 resource "aws_instance" "web" {
   count                       = 2
-  ami                         = data.aws_ami.al2.id
+  ami                         = data.aws_ami.al2023.id
   instance_type               = "t2.micro"
   key_name                    = var.key_name
   subnet_id                   = aws_subnet.public_a.id
@@ -370,4 +370,3 @@ output "rds_db_name" {
   description = "RDS database name"
   value       = aws_db_instance.this.db_name
 }
-
