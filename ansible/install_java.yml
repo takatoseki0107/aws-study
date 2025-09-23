@@ -8,6 +8,16 @@
         name: "*"
         state: latest
 
+    - name: Install Python 3.9
+      yum:
+        name: python39
+        state: present
+
+    - name: Set python3 alternatives to 3.9
+      alternatives:
+        name: python3
+        path: /usr/bin/python3.9
+
     - name: Install Java 11
       yum:
         name: java-11-amazon-corretto
