@@ -1,0 +1,34 @@
+name: Deploy Java to EC2
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  ansible-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create SSH key file
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Install Ansible Galaxy collections
+        run: ansible-galaxy collection install amazon.aws
+
+      - name: Run Ansible Playbook
+        uses: dawidd6/action-ansible-playbook@v2
+        with:
+          playbook: install_java.yml
+          directory: ./ansible
+          # ここに直接ホスト情報を指定する
+          inventory: ${{ secrets.EC2_HOST }}
+    # 'key'と'options'は、正しい使い方に修正
+          options: -u ec2-user -e "ansible_python_interpreter=/usr/bin/python3.9"
+          key: ${{ secrets.SSH_PRIVATE_KEY }}

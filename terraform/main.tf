@@ -118,13 +118,17 @@ resource "aws_security_group" "alb" {
     to_port     = 80
     cidr_blocks = ["0.0.0.0/0"]
   }
-
-  egress {
-    protocol    = "-1"
-    from_port   = 0
-    to_port     = 0
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+}
+# 循環参照を解消するため、ALBのegressルールを別のリソースとして定義
+resource "aws_security_group_rule" "alb_egress_to_ec2" {
+  type      = "egress"
+  from_port = 8080
+  to_port   = 8080
+  protocol  = "tcp"
+  # ここでec2セキュリティグループを参照
+  source_security_group_id = aws_security_group.ec2.id
+  # 適用先のセキュリティグループとしてalbを指定
+  security_group_id = aws_security_group.alb.id
 }
 
 resource "aws_security_group" "ec2" {
@@ -166,30 +170,24 @@ resource "aws_security_group" "rds" {
     security_groups = [aws_security_group.ec2.id]
   }
 
-  egress {
-    protocol    = "-1"
-    from_port   = 0
-    to_port     = 0
-    cidr_blocks = ["0.0.0.0/0"]
-  }
 }
 
 # ====================================
 # EC2 Instance
 # ====================================
-data "aws_ami" "al2" {
+data "aws_ami" "al2023" {
   most_recent = true
   owners      = ["amazon"]
 
   filter {
     name   = "name"
-    values = ["amzn2-ami-hvm-*-x86_64-gp2"]
+    values = ["al2023-ami-*-x86_64"]
   }
 }
 
 resource "aws_instance" "web" {
   count                       = 2
-  ami                         = data.aws_ami.al2.id
+  ami                         = data.aws_ami.al2023.id
   instance_type               = "t2.micro"
   key_name                    = var.key_name
   subnet_id                   = aws_subnet.public_a.id
@@ -372,4 +370,3 @@ output "rds_db_name" {
   description = "RDS database name"
   value       = aws_db_instance.this.db_name
 }
-
