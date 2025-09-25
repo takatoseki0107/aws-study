@@ -1,0 +1,62 @@
+version: 2.1
+
+jobs:
+  deploy:
+    docker:
+      - image: cimg/openjdk:17.0
+    environment:
+      TF_IN_AUTOMATION: "true"
+    steps:
+      - checkout
+
+      # ① AWS 認証
+      - run:
+          name: Setup AWS credentials
+          command: |
+            mkdir -p ~/.aws 
+            
+            echo "[default]" > ~/.aws/credentials
+            echo "aws_access_key_id = ${AWS_ACCESS_KEY_ID}" >> ~/.aws/credentials
+            echo "aws_secret_access_key = ${AWS_SECRET_ACCESS_KEY}" >> ~/.aws/credentials
+            echo "[default]" > ~/.aws/config
+            echo "region = ap-northeast-1" >> ~/.aws/config
+
+      # --- 以降のステップは変更なし ---
+      # ② Terraform 実行
+      - run:
+          name: Terraform Init & Apply
+          working_directory: terraform
+          command: |
+            terraform init
+            terraform validate
+            terraform plan -out=tfplan \
+              -var="allowed_ssh_cidr=221.49.49.27/32" \
+              -var="db_password=${DB_PASSWORD}"
+            terraform apply -auto-approve tfplan
+
+      # ③ JDK 17 + Gradle で Spring Boot ビルド
+      - run:
+          name: Build Spring Boot JAR
+          working_directory: app
+          command: |
+            ./gradlew bootJar
+
+      # ④ Ansible インストール
+      - run:
+          name: Install Ansible
+          command: |
+            sudo apt-get update && sudo apt-get install -y ansible
+
+      # ⑤ Ansible Playbook 実行（EC2へJAR配置＆起動）
+      - run:
+          name: Run Ansible Playbook
+          working_directory: ansible
+          command: |
+            echo "${SSH_PRIVATE_KEY}" > private.pem
+            chmod 600 private.pem
+            ansible-playbook -i inventory.ini site.yml --private-key private.pem -u ec2-user
+
+workflows:
+  deploy_workflow:
+    jobs:
+      - deploy
