@@ -24,8 +24,8 @@ jobs:
       - run:
           name: Install Terraform CLI
           command: |
-            # 必要なツール（wget, unzip）をインストール
-            sudo apt-get update && sudo apt-get install -y wget unzip
+            sudo apt-get update
+            sudo apt-get install -y wget unzip
             
             # Terraform CLIのダウンロードとインストール
             # 💡 バージョンは任意のものを指定してください (例: 1.7.0)
@@ -59,7 +59,8 @@ jobs:
       - run:
           name: Install Ansible
           command: |
-            sudo apt-get update && sudo apt-get install -y ansible
+            sudo apt-get update 
+            sudo apt-get install -y ansible
 
       # ⑤ Ansible Playbook 実行（EC2へJAR配置＆起動）
       - run:
