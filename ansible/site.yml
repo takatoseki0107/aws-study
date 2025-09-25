@@ -1,0 +1,46 @@
+- hosts: web
+  become: yes
+  vars:
+    app_dir: /opt/app
+    jar_file: app.jar
+  tasks:
+    - name: Install Java 17
+      yum:
+        name: java-17-amazon-corretto
+        state: present
+
+    - name: Create app dir
+      file:
+        path: "{{ app_dir }}"
+        state: directory
+        mode: '0755'
+
+    - name: Copy jar to server
+      copy:
+        src: ../app/build/libs/aws-study-app-0.0.1.jar
+        dest: "{{ app_dir }}/{{ jar_file }}"
+        mode: '0755'
+
+    - name: Create systemd unit
+      copy:
+        dest: /etc/systemd/system/aws-study.service
+        content: |
+          [Unit]
+          Description=Spring Boot App
+          After=network.target
+          [Service]
+          User=ec2-user
+          ExecStart=/usr/bin/java -jar {{ app_dir }}/{{ jar_file }}
+          Restart=always
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Reload systemd
+      command: systemctl daemon-reload
+
+    - name: Enable & start service
+      systemd:
+        name: aws-study
+        enabled: yes
+        state: restarted
+

@@ -1,0 +1,99 @@
+name: Full Deploy Pipeline
+
+on:
+  push:
+    branches: [ main, feature/circleci ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # ① リポジトリのコードを取得
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # ② AWS 認証情報の設定（公式アクションを使用）
+      #    Secretsを自動的に環境変数として設定します。
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-northeast-1
+
+      # ③ Terraform 実行
+      - name: Terraform Init
+        working-directory: terraform
+        run: terraform init
+
+      - name: Terraform Validate
+        working-directory: terraform
+        run: terraform validate
+
+      - name: Terraform Plan
+        working-directory: terraform
+        run: terraform plan -no-color \
+          -var="allowed_ssh_cidr=221.49.49.27/32" \
+          -var="db_password=${{ secrets.DB_PASSWORD }}"
+
+      - name: Terraform Apply
+        if: github.ref == 'refs/heads/main'
+        working-directory: terraform
+        run: terraform apply -auto-approve \
+          -var="allowed_ssh_cidr=221.49.49.27/32" \
+          -var="db_password=${{ secrets.DB_PASSWORD }}"
+          
+      # ④ ✅ 重要修正: Terraform Outputから2台分のIPを取得し、inventory.iniを更新
+      - name: Get EC2 IPs and Update Ansible Inventory
+        working-directory: terraform
+        run: |
+          # jqコマンド（JSON処理用）のインストール
+          sudo apt-get update && sudo apt-get install -y jq
+
+          # outputをJSON形式で取得
+          OUTPUT_JSON=$(terraform output -json ec2_public_ip)
+          
+          # jq -r '.[]' でリストの各要素を抽出し、改行区切りで取得（2台分のIPが抽出される）
+          EC2_IPS=$(echo "$OUTPUT_JSON" | jq -r '.[]') 
+          
+          # Ansibleのinventory.iniを新しいIPで書き換え（working-directoryはterraformなので '../ansible'）
+          echo "[webservers]" > ../ansible/inventory.ini
+          echo "$EC2_IPS" >> ../ansible/inventory.ini
+
+
+      # ⑤ Spring Boot JAR のビルド
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Build Spring Boot JAR
+        working-directory: app
+        run: ./gradlew bootJar
+        
+      # ⑥ ✅ 必須修正: SSH秘密鍵の配置とJARファイルのコピー
+      - name: Setup SSH Key and Copy JAR
+        run: |
+          # 1. SSH秘密鍵をファイルとして配置
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/takatoseki.pem
+          chmod 600 ~/.ssh/takatoseki.pem
+          
+          # 2. JARファイルをAnsibleが参照できるディレクトリ（ansible/）にコピー
+          #    💡 パスが正しいか確認してください (例: app/build/libs/app.jar)
+          find app/build/libs -name "*.jar" -exec cp {} ansible/ \; 
+
+      # ⑦ Ansible インストール
+      - name: Install Ansible
+        run: sudo apt-get update && sudo apt-get install -y ansible
+
+      # ⑧ Ansible Playbook 実行（EC2へデプロイ）
+      - name: Run Ansible Playbook
+        working-directory: ansible
+        env:
+          ANSIBLE_HOST_KEY_CHECKING: "False"
+        run: ansible-playbook -i inventory.ini site.yml --private-key ~/.ssh/takatoseki.pem -u ec2-user
+
+        
