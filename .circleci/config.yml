@@ -44,12 +44,24 @@ jobs:
               -var="db_password=${DB_PASSWORD}"
             terraform apply -auto-approve tfplan
 
-      # ③ JDK 17 + Gradle で Spring Boot ビルド
+      # 1. JAR ビルド (app ディレクトリで実行)
       - run:
           name: Build Spring Boot JAR
-          working_directory: app
+          working_directory: app # <--- 確定: gradlew は app フォルダ内にある
           command: |
-            ./gradlew bootJar
+            # gradlew に実行権限を付与 (CI環境での保険)
+            chmod +x gradlew
+            
+            # app フォルダ内でビルドを実行
+            ./gradlew bootJar 
+      
+      # 2. 成果物 (JAR) のコピー
+      - run:
+          name: Copy JAR for Deployment
+          command: |
+            # JARファイルは 'app/build/libs/' に生成されるため、ansible フォルダなどにコピー
+            cp app/build/libs/*.jar ansible/ 
+
 
       # ④ Ansible インストール
       - run:
