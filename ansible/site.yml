@@ -17,9 +17,10 @@
 
     - name: Copy jar to server
       copy:
-        src: ../app/build/libs/aws-study-app-0.0.1.jar
+        src: files/aws-study-app-0.0.1.jar   
         dest: "{{ app_dir }}/{{ jar_file }}"
         mode: '0755'
+
 
     - name: Create systemd unit
       copy:

@@ -78,6 +78,13 @@ jobs:
             echo "${SSH_PRIVATE_KEY}" > private.pem
             chmod 600 private.pem
             ansible-playbook -i inventory.ini site.yml --private-key private.pem -u ec2-user
+    
+      - run:
+          name: Copy JAR for Deployment
+          command: |
+            mkdir -p ansible/files
+            cp app/build/libs/*.jar ansible/files/
+
 
 workflows:
   deploy_workflow:
