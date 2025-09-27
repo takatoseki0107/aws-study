@@ -77,7 +77,7 @@ jobs:
           command: |
             echo "${SSH_PRIVATE_KEY}" > private.pem
             chmod 600 private.pem
-            ansible-playbook -i inventory.ini site.yml --private-key private.pem -u ec2-user
+            ansible-playbook -i <(echo "[web]\n$(terraform -chdir=terraform output -raw public_ip)") site.yml --private-key private.pem -u ec2-user
     
       - run:
           name: Copy JAR for Deployment
