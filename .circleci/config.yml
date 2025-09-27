@@ -43,6 +43,18 @@ jobs:
               -var="allowed_ssh_cidr=221.49.49.27/32" \
               -var="db_password=${DB_PASSWORD}"
             terraform apply -auto-approve tfplan
+      
+      - run:
+          name: Generate Ansible Inventory
+          command: |
+
+            EC2_IP=$(terraform output -raw ec2_public_ip) 
+            
+            echo "[web]" > ansible/inventory.ini
+            echo "${EC2_IP} ansible_user=ec2-user" >> ansible/inventory.ini
+           
+            echo "Generated Inventory:"
+            cat ansible/inventory.ini
 
       # 1. JAR ビルド (app ディレクトリで実行)
       - run:
@@ -84,6 +96,7 @@ jobs:
           command: |
             mkdir -p ansible/files
             cp app/build/libs/*.jar ansible/files/
+      
 
 
 workflows:
