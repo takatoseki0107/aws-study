@@ -2,7 +2,26 @@
 - hosts: all
   become: yes
   tasks:
+    # 1. Java 11のインストール 
     - name: Install Java 11
       ansible.builtin.yum:
         name: java-11-amazon-corretto-headless
         state: present
+
+    # 2. アプリケーションJARファイルのコピー (新規追加)
+  
+    - name: Copy Spring Boot JAR to target
+      ansible.builtin.copy:
+        src: "{{ lookup('fileglob', '../ansible/*.jar') | first }}" 
+        dest: /opt/my-app.jar                                    
+        owner: ec2-user
+        group: ec2-user
+        mode: '0755'
+
+    # 3. アプリケーションの起動 (新規追加)
+    - name: Run Spring Boot Application (detached)
+      ansible.builtin.shell: |
+        # Javaプロセスをバックグラウンドで起動し、nohupと&で切り離す
+        nohup java -jar /opt/my-app.jar > /tmp/app.log 2>&1 &
+      args:
+        creates: /tmp/app.log
