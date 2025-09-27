@@ -47,7 +47,7 @@ jobs:
       # 1. JAR ビルド (app ディレクトリで実行)
       - run:
           name: Build Spring Boot JAR
-          working_directory: app # <--- 確定: gradlew は app フォルダ内にある
+          working_directory: app 
           command: |
             # gradlew に実行権限を付与 (CI環境での保険)
             chmod +x gradlew
